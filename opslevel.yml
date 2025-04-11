@@ -1,0 +1,16 @@
+---
+version: 1
+service:
+  name: sre-challenge
+  lifecycle:
+  owner: sre 
+  language:
+  description: |-
+    🚀 The Pleo SRE Challenge
+  repositories:
+    - name: pleo-io/sre-challenge
+      path: '/'
+      provider: github
+  tags:
+    - key: type
+      value: hiring-challenge
