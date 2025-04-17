@@ -99,3 +99,30 @@ To keep things simple, we can use the `minikube image build` command. This comma
 minikube image build -t "${IMAGE_NAME}" "${PATH_TO_DOCKERFILE}"
 ```
 
+## 1. Debugging
+
+### 1.1. payment-provider build error
+
+During the build process of the `payment-provider` image, the build fails and returns error messages like the following:
+
+```sh
+/go/pkg/mod/github.com/gin-gonic/gin@v1.9.1/gin.go:20:2: missing go.sum entry for module providing package golang.org/x/net/http2 (imported by github.com/gin-gonic/gin)
+```
+
+```sh
+error: failed to solve: process "/bin/sh -c go build -o app ." did not complete successfully: exit code: 1
+```
+
+These errors occurs because, during the build process inside the container, Go attemps to verifiy the integrity of dependencies listed in the `go.sum` file. If any required entries are missing, the build fails.
+
+To resolve this, we need to ensure that all dependencies are properly downloaded before the application is built. This can be done by adding the following instructions to the Dockerfile:
+
+```dockerfile
+RUN go mod download -x
+RUN go mod tidy -v
+```
+
+The `go mod download -x` command downloads all dependencies specified in the `go.mod` file and updates the `go.sum` file with the necessary entries. The `go mod tidy -v` command ensures that the module dependencies are cleaned up and consistent, removing any unused dependencies.
+
+I've included these instructions in both Dockerfiles. While this resolves the immediate issue, there are further improvements that could be made to optimise the process. These enhancements are addresses in later sections.
+
