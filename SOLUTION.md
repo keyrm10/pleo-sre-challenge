@@ -86,3 +86,16 @@ search_order 1
 timeout 5
 EOF
 ```
+
+## 0.3. Container registry
+
+Before deploying the applications, we first need to build the container images and push them to a container registry that is accessible from the Kubernetes cluster.
+
+We can either deploy a local registry (e.g., [registry:2](https://hub.docker.com/_/registry)) or use a public container registry (e.g., Docker Hub, GCR). Additionally, the minikube documentation offers several methods for [pushing images](https://minikube.sigs.k8s.io/docs/handbook/pushing/) to the minikube cluster.
+
+To keep things simple, we can use the `minikube image build` command. This command builds the image using the Docker daemon inside the minikube VM, making it immediately accessible to the Kubernetes cluster:
+
+```sh
+minikube image build -t "${IMAGE_NAME}" "${PATH_TO_DOCKERFILE}"
+```
+

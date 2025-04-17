@@ -5,7 +5,7 @@ set -euo pipefail
 MINIKUBE_VERSION="v1.35.0"
 DRIVER="docker"
 RUNTIME="containerd"
-ADDONS="ingress,ingress-dns"
+DDONS=("ingress" "ingress-dns")
 INSTALL_PATH="/usr/local/bin/minikube"
 
 # detect platform (linux|darwin) and architecture (amd64|arm64)
@@ -48,14 +48,21 @@ download_minikube() {
   echo "Installed minikube to $INSTALL_PATH"
 }
 
+# build container images
+build_image() {
+  local image_name="$1"
+  local app_dir="$2"
+  echo "Building image $image_name..."
+  minikube image build -t "$image_name" "$app_dir"
+}
+
 # start minikube cluster with the specified driver, runtime, and addons
 start_minikube() {
   echo "Starting minikube cluster..."
   minikube start \
     --driver="$DRIVER" \
     --container-runtime="$RUNTIME" \
-    --addons="$ADDONS" \
-    --wait=all
+    --addons="$(IFS=,; echo "${ADDONS[*]}")"
 
   echo -e "\nminikube cluster status:"
   minikube status
@@ -72,6 +79,10 @@ main() {
   fi
 
   start_minikube
+
+  # build images after minikube is started
+  build_image invoice-app:latest ./invoice-app
+  build_image payment-provider:latest ./payment-provider
 }
 
 main "$@"
