@@ -43,7 +43,7 @@ download_minikube() {
     exit 1
   fi
 
-  sudo install -o root -g root -m 0755 "$tmpfile" "$INSTALL_PATH"
+  sudo install -m 0755 "$tmpfile" "$INSTALL_PATH"
   rm -f "$tmpfile"
   echo "Installed minikube to $INSTALL_PATH"
 }
