@@ -126,3 +126,45 @@ The `go mod download -x` command downloads all dependencies specified in the `go
 
 I've included these instructions in both Dockerfiles. While this resolves the immediate issue, there are further improvements that could be made to optimise the process. These enhancements are addresses in later sections.
 
+### 1.2. Rootless containers
+
+After applying the manifests, I noticed the following status errors:
+
+```sh
+NAME                                READY   STATUS                       RESTARTS   AGE
+invoice-app-f864dc848-42cgq         0/1     CreateContainerConfigError   0          15s
+invoice-app-f864dc848-bs69f         0/1     CreateContainerConfigError   0          15s
+invoice-app-f864dc848-jc2sp         0/1     CreateContainerConfigError   0          15s
+payment-provider-699d59df56-bm2ph   0/1     CreateContainerConfigError   0          7s
+payment-provider-699d59df56-kvl4d   0/1     CreateContainerConfigError   0          7s
+payment-provider-699d59df56-qwv9l   0/1     CreateContainerConfigError   0          7s
+```
+
+The `kubectl describe pods` output revealed this error: `Error: container has runAsNonRoot and image will run as root`.
+
+Both deployments are configured with `securityContext.runAsNonRoot: true`, which enforces that containers run as non-root users. This is a good security practice, but the Dockerfiles for these containers do not define a user, so the applications run as root by default. This leads to a conflict with the Kubernetes security context.
+
+To fix this issue, specify a non-root user in the Dockerfile using the `USER` instruction, or use a pre-configured non-root image, such as one of the [distroless](https://github.com/GoogleContainerTools/distroless) images with the `nonroot` tag.
+
+After updating the Dockerfiles, we need to rebuild the images. If you reuse the same tag (`invoice-app:latest` , `payment-provider:latest`), Kubernetes may treat them as unchanged.
+
+> Note: Avoid using the `latest` tag in production. Instead, use immutable tags (e.g., 1.0) to ensure predictable and consistent versioning.
+
+Since the Deployment's image pull policy is `IfNotPresent`, updated images won't be pulled unless you delete the pods, change the tag, or restart the pods manually. To force a deployment update, run:
+
+```sh
+kubectl rollout restart deployment invoice-app payment-provider
+```
+
+This restarts the deployments and pulls the updated images. After a few seconds, the pods will be running:
+
+```sh
+kubectl get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+invoice-app-f864dc848-42vv7         1/1     Running   0          46s
+invoice-app-f864dc848-bsngx         1/1     Running   0          46s
+invoice-app-f864dc848-dhdwd         1/1     Running   0          46s
+payment-provider-699d59df56-mwwhl   1/1     Running   0          43s
+payment-provider-699d59df56-pwzzd   1/1     Running   0          43s
+payment-provider-699d59df56-vnhqc   1/1     Running   0          43s
+```
