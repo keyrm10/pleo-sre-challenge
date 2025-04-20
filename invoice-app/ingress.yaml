@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: invoice-app
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: invoice-app.pleo
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: invoice-app
+                port:
+                  number: 80

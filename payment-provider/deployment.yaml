@@ -13,8 +13,10 @@ spec:
         app: payment-provider
     spec:
       containers:
-      - name: main
-        image: payment-provider:latest
-        imagePullPolicy: IfNotPresent
+        - name: main
+          image: payment-provider:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
       securityContext:
         runAsNonRoot: true

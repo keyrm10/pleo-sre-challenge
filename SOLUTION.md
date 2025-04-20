@@ -123,3 +123,36 @@ invoice-app-f864dc848-42vv7         1/1     Running   0          46s
 ...
 ```
 
+## 2. Implementation
+
+### 2.1. Exposing deployments
+
+> Note: Ensure that both the `ingress` and `ingress-dns` addons are enabled in minikube. This is done automatically by running the `init.sh` script or `make init`. You can also enable them manually with:
+>
+> ```sh
+> minikube addons enable ingress
+> minikube addons enable ingress-dns
+> ```
+
+The requirements for this part are:
+
+1. The `invoice-app` must be accessible from outside the cluster.
+2. The `payment-provider` must only be accessible from within the cluster.
+
+To meet these requirements, the following setup was implemented:
+
+#### 2.1.1. `invoice-app`
+
+The `invoice-app` Service is defined as type `ClusterIP`, exposing the application internally on port 80 and forwarding requests to port 8081 on the application container. This allows other resources within the cluster to communicate with the service.
+
+To enable external access, an Ingress resource is defined, which is managed by the NGINX Ingress Controller. It routes HTTP traffic for the host `invoice-app.pleo` to the `invoice-app` Service on port 80.
+
+This configuration allows external clients to access the application via a user-friendly DNS name and benefits from standard ingress capabilities such as routing, TLS termination, and access control.
+
+#### 2.1.2. `payment-provider`
+
+The `payment-provider` Service is also defined as type `ClusterIP`, exposing the application on port 8082 within the cluster. Unlike `invoice-app`, no Ingress resource is defined for it.
+
+This ensures the service is not accessible externally and can only be reached by other internal services.
+
+The `invoice-app` communicates with `payment-provider` using the internal DNS name `http://payment-provider:8082`, which resolves to the corresponding ClusterIP service.

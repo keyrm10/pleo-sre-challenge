@@ -13,8 +13,10 @@ spec:
         app: invoice-app
     spec:
       containers:
-      - name: main
-        image: invoice-app:latest
-        imagePullPolicy: IfNotPresent
+        - name: main
+          image: invoice-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
       securityContext:
         runAsNonRoot: true
