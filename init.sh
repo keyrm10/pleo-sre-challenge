@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# init.sh: Installs and starts minikube on Linux/macOS (sorry, Windows users)
+# init.sh: Install and starts minikube on Linux/macOS (sorry, Windows users)
 set -euo pipefail
 
 MINIKUBE_VERSION="v1.35.0"
@@ -7,6 +7,10 @@ DRIVER="docker"
 RUNTIME="containerd"
 ADDONS=("ingress" "ingress-dns" "metrics-server")
 INSTALL_PATH="/usr/local/bin/minikube"
+
+# logging functions
+info() { echo -e "\033[1;32mINFO:\033[0m $*"; }
+error() { echo -e "\033[1;31mERROR:\033[0m $*" >&2; }
 
 # detect platform (linux|darwin) and architecture (amd64|arm64)
 detect_platform_arch() {
@@ -17,13 +21,13 @@ detect_platform_arch() {
   case "$os" in
     Linux) PLATFORM="linux" ;;
     Darwin) PLATFORM="darwin" ;;
-    *) echo "Unsupported OS: $os"; exit 1 ;;
+    *) error "Unsupported OS: $os"; exit 1 ;;
   esac
 
   case "$arch" in
     x86_64) ARCH="amd64" ;;
     arm64|aarch64) ARCH="arm64" ;;
-    *) echo "Unsupported architecture: $arch"; exit 1 ;;
+    *) error "Unsupported architecture: $arch"; exit 1 ;;
   esac
 }
 
@@ -32,47 +36,47 @@ download_minikube() {
   local url tmpfile
   url="https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-${PLATFORM}-${ARCH}"
   tmpfile="$(mktemp)"
-  echo "Downloading minikube..."
+  info "Downloading minikube..."
 
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL -o "$tmpfile" "$url"
   elif command -v wget >/dev/null 2>&1; then
     wget -qO "$tmpfile" "$url"
   else
-    echo "Neither curl nor wget is installed" >&2
+    error "Neither curl nor wget is installed"
     exit 1
   fi
 
   sudo install -m 0755 "$tmpfile" "$INSTALL_PATH"
   rm -f "$tmpfile"
-  echo "Installed minikube to $INSTALL_PATH"
+  info "Installed minikube to $INSTALL_PATH"
 }
 
 # build container images
 build_image() {
   local image_name="$1"
   local app_dir="$2"
-  echo "Building image $image_name..."
+  info "Building image $image_name..."
   minikube image build -t "$image_name" "$app_dir"
 }
 
 # start minikube cluster with the specified driver, runtime, and addons
 start_minikube() {
-  echo "Starting minikube cluster..."
+  info "Starting minikube cluster..."
   minikube start \
     --driver="$DRIVER" \
     --container-runtime="$RUNTIME" \
     --addons="$(IFS=,; echo "${ADDONS[*]}")"
 
-  echo -e "\nminikube cluster status:"
+  info "\nminikube cluster status:"
   minikube status
-  echo "minikube cluster is ready!"
+  info "minikube cluster is ready!"
 }
 
 # main entry point
 main() {
   if command -v minikube >/dev/null 2>&1; then
-    echo "minikube is already installed. Skipping installation."
+    info "minikube is already installed. Skipping installation."
   else
     detect_platform_arch
     download_minikube
