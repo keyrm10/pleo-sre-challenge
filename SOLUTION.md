@@ -252,3 +252,82 @@ This allows the URL to be configured externally (e.g., via Kubernetes manifests 
 - Verifies all invoices are marked as paid.
 
 Uses `curl` and `jq` for HTTP requests and JSON parsing. Exits non-zero on failure—ideal for CI/CD or local checks.
+
+## 3. Questions
+
+### 3.1. Production-ready setup
+
+To make this production-ready:
+
+- Use a managed Kubernetes service (GKE, EKS, AKS) to reduce operational overhead.
+- Set up a proper CI/CD pipeline (GitHub Actions, GitLab CI) to automate builds, tests, and deployments.
+- Avoid the `latest` tag; use semantic versioning for images.
+- Enable HPA for autoscaling.
+- Centralize monitoring/logging (Prometheus, Grafana, ELK, or Loki).
+- Use TLS everywhere, even internally (Cert-Manager, Let's Encrypt).
+- Separate services into namespaces for organization and access control.
+- Manage secrets securely (Kubernetes Secrets or Vault).
+- Replace in-memory DB with a persistent store (Postgres, MySQL) for data durability.
+
+### 3.2. Team-specific access to services
+
+Give each team its own namespace for natural resource boundaries. Use Kubernetes RBAC to restrict access:
+
+```yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: invoice-app-namespace
+  name: invoice-app-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: invoice-app-namespace
+  name: invoice-app-binding
+subjects:
+  - kind: User
+    name: invoice-team
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: invoice-app-role
+  apiGroup: rbac.authorization.k8s.io
+```
+
+Also, create dedicated service accounts for CI/CD pipelines, scoped to each namespace, and enable audit logging to track access.
+
+### 3.3. Locking down access to `payment-provider`
+
+By default, pods can talk to each other freely. To restrict access to `payment-provider`, use a network policy:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: payment-provider-policy
+  namespace: payment-provider-namespace
+spec:
+  podSelector:
+    matchLabels:
+      app: payment-provider
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: invoice-app-namespace
+          podSelector:
+            matchLabels:
+              app: invoice-app
+      ports:
+        - protocol: TCP
+          port: 8082
+```
+
+This allows only `invoice-app` to talk to `payment-provider` on port 8082. Keep the service as `ClusterIP` to prevent external exposure. For extra security, add authentication (API keys or mTLS). If using a service mesh (e.g., Istio, Linkerd), you get mTLS and traffic policies out of the box.
+
+So the approach is: Block at the network level, keep services internal, and require authentication between services.
