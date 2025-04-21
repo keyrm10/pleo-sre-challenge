@@ -65,13 +65,21 @@ trigger_payment() {
 # verify all invoices are paid
 verify_paid_invoices() {
   local url="$1"
+  local attempt=1
 
-  if curl --silent "$url" | jq '.[].IsPaid' | grep -q 'false'; then
-    error "Error: some invoices remain unpaid."
-    exit 1
-  else
-    info "Success: All invoices have been paid."
-  fi
+  while [ $attempt -le $MAX_RETRIES ]; do
+    if curl --silent "$url" | jq '.[].IsPaid' | grep -q 'false'; then
+      info "Waiting for invoices to be paid (attempt $attempt/$MAX_RETRIES)..."
+      sleep 2
+      ((attempt++))
+    else
+      info "Success: All invoices have been paid."
+      return 0
+    fi
+  done
+
+  error "Error: some invoices remain unpaid."
+  exit 1
 }
 
 # main entry point
