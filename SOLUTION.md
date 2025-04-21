@@ -43,24 +43,29 @@ The following tools must be installed:
 
 #### 0.2.3. Networking
 
-Minikube ingress typically requires DNS for custom domains, often involving `/etc/hosts` edits. To avoid this, both `ingress` and `ingress-dns` addons are enabled, providing DNS resolution within the cluster.
+Minikube ingress typically requires DNS for custom domains, often involving manual edits to `/etc/hosts`. To simplify this process, both the `ingress` and `ingress-dns` addons are enabled. These provide DNS resolution within the cluster, eliminating the need for manual host file changes.
 
-The `ingress-dns` addon runs a DNS server inside the cluster, mapping ingress hostnames to the minikube IP. By configuring your host to use the minikube IP as a DNS server, services resolve automatically.
+The `ingress-dns` addon runs a DNS server inside the cluster that maps ingress hostnames to the Minikube IP. By configuring your system to use the Minikube IP as a DNS server, services can resolve automatically.
 
-##### DNS configuration on macOS
+##### Configuring DNS resolution for custom domains
 
-On macOS, DNS resolution for custom domains can be configured by adding a resolver:
+- **Linux**:
+  On Linux, DNS resolution for custom domains depends on the system's domain resolution method (e.g., `systemd-resolved`, `NetworkManager`, or direct edits to `/etc/resolv.conf`).
+  Refer to the [minikube documentation](https://minikube.sigs.k8s.io/docs/handbook/addons/ingress-dns/#Linux) for detailed instructions.
 
-```sh
-sudo tee /etc/resolver/minikube-pleo <<EOF
-domain pleo
-nameserver $(minikube ip)
-search_order 1
-timeout 5
-EOF
-```
+- **macOS**:
+  On macOS, DNS resolution for custom domains can be configured by adding a resolver:
 
-## 0.3. Container registry
+  ```sh
+  sudo tee /etc/resolver/minikube-pleo <<EOF
+  domain pleo
+  nameserver $(minikube ip)
+  search_order 1
+  timeout 5
+  EOF
+  ```
+
+### 0.3. Container registry
 
 Before deploying, images must be built and made available to the cluster. This can be done via a local registry, a public registry, or by building images directly inside minikube.
 
@@ -225,7 +230,7 @@ The payment provider URL in `invoice-app/main.go` is now configurable via the `P
 ```go
 paymentProviderURL = os.Getenv("PAYMENT_PROVIDER_URL")
 if paymentProviderURL == "" {
-	paymentProviderURL = "http://payment-provider:8082/payments/pay"
+  paymentProviderURL = "http://payment-provider:8082/payments/pay"
 }
 ```
 
