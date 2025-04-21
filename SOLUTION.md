@@ -255,3 +255,29 @@ if paymentProviderURL == "" {
 ```
 
 This allows the URL to be configured externally (e.g., via Kubernetes manifests or deployment scripts), improving portability and maintainability.
+
+### 2.4. Automation scripts
+
+### 2.4.1. `deploy.sh`
+
+The [`deploy.sh`](./deploy.sh) script automates the end-to-end deployment of the `invoice-app` and `payment-provider` applications in a Kubernetes environment. It ensures consistent and repeatable deployments with minimal manual intervention.
+
+**Key steps:**
+
+- Checks if Minikube is running; starts it if necessary.
+- Builds Docker images for `invoice-app` and `payment-provider` within the Minikube environment (only if not already available).
+- Applies Kubernetes manifests from each application's directory.
+- Waits until each deployment is successfully rolled out.
+
+### 2.4.2. `test.sh`
+
+The [`test.sh`](./test.sh) script verifies the correct functionality of the deployed applications.
+
+It uses `curl` for making HTTP requests and `jq` for parsing JSON responses, providing clear and actionable log output at each step. The script exits with a non-zero status code if any check fails, making it ideal for CI/CD pipelines or local verification.
+
+**Key steps:**
+
+- Waits for the `invoice-app` HTTP endpoint to become responsive.
+- Checks that at least one unpaid invoice exists initially.
+- Triggers the payment process via the `/invoices/pay` endpoint.
+- Verifies that all invoices are marked as paid after the transaction.
