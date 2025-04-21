@@ -2,7 +2,7 @@
 
 # build stage
 
-ARG GO_VERSION=1.19
+ARG GO_VERSION=1.18
 ARG ALPINE_VERSION=3.15
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS build
 WORKDIR /src

@@ -2,7 +2,7 @@
 
 # build stage
 
-ARG GO_VERSION=1.19
+ARG GO_VERSION=1.18
 ARG ALPINE_VERSION=3.15
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS build
 WORKDIR /src
@@ -24,6 +24,6 @@ FROM gcr.io/distroless/static-debian12:nonroot AS final
 
 COPY --from=build /bin/app /bin/
 
-EXPOSE 8081
+EXPOSE 8082
 
 ENTRYPOINT [ "/bin/app" ]
