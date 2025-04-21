@@ -4,17 +4,24 @@
 
 ### 0.1. Branching strategy
 
-I used the GitHub Flow model (feature branch → PR → main) for its simplicity and suitability for small teams and iterative work. All changes for this challenge are organized as atomic commits on a single feature branch for simplicity: `feature/sre-challenge-solution`.
+For this challenge, I adopted the GitHub Flow branching model, which is well-suited for small teams and iterative development. The workflow is as follows:
+
+- Create a feature branch for each set of related changes.
+- Commit changes to the feature branch in small, atomic commits with clear messages.
+- Open a pull request (PR) from the feature branch to `main` for review and discussion.
+- After review and approval, merge the PR into `main`.
+
+This approach ensures a clean, linear history and makes it easy to track changes, collaborate, and review code. For this solution, all changes are organized on a single feature branch (`feature/sre-challenge-solution`) for clarity and simplicity, but in a larger project, multiple feature branches would be used in parallel.
 
 ### 0.2. Local Kubernetes cluster
 
-All setup steps are automated for reproducibility and minimal manual effort.
+All setup steps are automated for consistency and minimal manual intervention.
 
-The [`init.sh`](./init.sh) script installs and starts minikube, automatically detecting OS and architecture to fetch the correct binary if needed.
+The [`init.sh`](./init.sh) script handles installation and startup of minikube. It automatically detects your OS and architecture to download the correct binary if needed.
 
-Minikube is started with the Docker driver and the `containerd` runtime, since Docker runtime is deprecated in Kubernetes v1.24+.
+minikube is started using the Docker driver and the `containerd` runtime, as Docker runtime is deprecated in Kubernetes v1.24+.
 
-A `Makefile` streamlines the process, with targets for each step. Run `make help` to see available commands.
+A `Makefile` is provided to streamline the workflow, with targets for each step. Run `make help` to see all available commands.
 
 #### 0.2.1. Prerequisites
 
@@ -40,6 +47,7 @@ The following tools must be installed:
 - **init**: Install and start the Kubernetes cluster with required addons.
 - **deploy**: Deploy the application using `deploy.sh`.
 - **clean**: Delete the minikube cluster and clean up resources.
+- **test**: Run integration tests using `test.sh`.
 
 #### 0.2.3. Networking
 
@@ -79,7 +87,7 @@ minikube image build -t "${IMAGE_NAME}" "${PATH_TO_DOCKERFILE}"
 
 ### 1.1. Image build errors
 
-During the build of the container images, you might see errors like:
+During the build of the container images, you might encounter errors like:
 
 ```sh
 /go/pkg/mod/github.com/gin-gonic/gin@v1.9.1/gin.go:20:2: missing go.sum entry for module providing package golang.org/x/net/http2 (imported by github.com/gin-gonic/gin)
@@ -87,12 +95,19 @@ During the build of the container images, you might see errors like:
 error: failed to solve: process "/bin/sh -c go build -o app ." did not complete successfully: exit code: 1
 ```
 
-This is due to missing entries in `go.sum`. Fix it by downloading dependencies before building:
+These errors occur when required dependencies are missing from `go.sum`. To fix this, add the following line to the Dockerfile before the `go build` command:
 
 ```dockerfile
 RUN go mod download -x
-RUN go mod tidy -v
 ```
+
+If `go.mod` and `go.sum` are out of sync, running the following locally (not in the Dockerfile) may also be necessary:
+
+```sh
+go mod tidy -v
+```
+
+Both Dockerfiles have been updated to efficiently use the build cache: Go modules are cached via `/go/pkg/mod/`, and `go.mod` and `go.sum` are bind-mounted to avoid unnecessary downloads when dependencies haven’t changed. This speeds up rebuilds and ensures reproducibility. For more details, see [2.5. Dockerfile optimisations](./SOLUTION.md#25-dockerfile-optimisations).
 
 ### 1.2. Rootless containers
 
@@ -291,6 +306,8 @@ To make this production-ready:
 
 - Use a managed Kubernetes service (GKE, EKS, AKS) to reduce operational overhead.
 - Set up a proper CI/CD pipeline (GitHub Actions, GitLab CI) to automate builds, tests, and deployments.
+- Adopt a branching strategy such as GitHub Flow or GitLab Flow, with protected branches for `main` (production), `staging`, and feature branches. Use pull/merge requests for code review and automated checks.
+- Implement separate environments for testing, staging, and production. Each environment should have its own cluster, with automated promotion of builds from testing → staging → production after passing tests and approvals.
 - Avoid the `latest` tag; use semantic versioning for images.
 - Enable HPA for autoscaling.
 - Centralize monitoring/logging (Prometheus, Grafana, ELK, or Loki).
