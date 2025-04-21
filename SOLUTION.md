@@ -258,6 +258,31 @@ This allows the URL to be configured externally (e.g., via Kubernetes manifests 
 
 Uses `curl` and `jq` for HTTP requests and JSON parsing. Exits non-zero on failure—ideal for CI/CD or local checks.
 
+### 2.5. Dockerfile optimisations
+
+Both `invoice-app` and `payment-provider` Dockerfiles were optimised to significantly improve build performance and reduce image size, following Docker best practices. The changes outlined below contributed to a faster, more secure, and more efficient container build process.
+
+#### Key optimisations
+
+- **Multi-stage builds**: The Dockerfiles use a builder stage (`golang:alpine`) and a minimal final stage (`distroless/static-debian12:nonroot`). This ensures that only the compiled binary and essential files are included in the final image, reducing both size and potential attack surface.
+- **Efficient use of build cache**: The build stage leverages Docker’s build cache for Go modules (`/go/pkg/mod/`) and binds `go.mod` and `go.sum` to avoid unnecessary downloads when dependencies haven’t changed. This speeds up rebuilds and ensures reproducibility.
+- **Cross-platform compatibility**: The use of `--platform` along with build arguments (`TARGETOS`, `TARGETARCH`) enables platform-agnostic builds, making the images portable and CI-friendly.
+- **Non-root execution**: The final image is based on a non-root distroless image, aligning with Kubernetes security best practices and the pod security context (`runAsNonRoot: true`).
+- **Minimal final image**: Only the statically compiled binary is copied into the final image, excluding unnecessary files and layers. This keeps the image lightweight and production-ready.
+
+#### Impact and benefits
+
+- **Build time**: Build times were reduced from ~29s to ~11s for both apps (over 2x faster), thanks to improved caching and a streamlined build process. This was measured using the `time docker build --no-cache` command.
+- **Image size**: Image sizes dropped from ~1.22GB to ~16MB (over 98% reduction), making deployments faster, reducing registry storage, and improving security by minimizing the attack surface:
+
+  ```sh
+  docker image ls | grep -E 'invoice-app|payment-provider'
+  payment-provider   after     8f6336617d44   About a minute ago   16.3MB
+  invoice-app        after     0f993af16743   8 minutes ago        16.9MB
+  payment-provider   before    a5ebc1f42484   9 minutes ago        1.22GB
+  invoice-app        before    dd811379eff3   10 minutes ago       1.22GB
+  ```
+
 ## 3. Questions
 
 ### 3.1. Production-ready setup
