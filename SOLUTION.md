@@ -242,3 +242,16 @@ These probes help Kubernetes determine the health and readiness of the applicati
 - **Liveness probes** detect and restart stuck containers that cannot recover on their own. They use a higher `failureThreshold` to tolerate transient issues before triggering a restart.
 - **Readiness probes** ensure that traffic is only routed to pods that are fully initialized and healthy. They typically fail faster to quickly remove unhealthy pods from service endpoints.
 - Both apps expose a `/healthz` endpoint for these probes, implemented as a simple GET route in `main.go`.
+
+### 2.3. Payment provider URL configuration
+
+Previously, the URL for the payment provider in `invoice-app/main.go` was hardcoded, making it inflexible for different environments. This has been improved by reading the URL from the `PAYMENT_PROVIDER_URL` environment variable, with a sensible default fallback if the variable is not set:
+
+```go
+paymentProviderURL = os.Getenv("PAYMENT_PROVIDER_URL")
+if paymentProviderURL == "" {
+	paymentProviderURL = "http://payment-provider:8082/payments/pay"
+}
+```
+
+This allows the URL to be configured externally (e.g., via Kubernetes manifests or deployment scripts), improving portability and maintainability.

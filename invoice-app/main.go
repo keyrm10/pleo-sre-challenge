@@ -5,14 +5,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"pleo.io/invoice-app/db"
 
 	"github.com/gin-gonic/gin"
 )
 
+var dbClient *db.Client
+var paymentProviderURL string
+
 func main() {
 	dbClient = db.InitializeDatabase()
+
+	paymentProviderURL = os.Getenv("PAYMENT_PROVIDER_URL")
+	if paymentProviderURL == "" {
+		paymentProviderURL = "http://payment-provider:8082/payments/pay"
+	}
 
 	router := setupRouter()
 
@@ -49,7 +58,7 @@ func pay(c *gin.Context) {
 		}
 		b, err := json.Marshal(req)
 		data := bytes.NewBuffer(b)
-		_, err = client.Post("http://payment-provider:8082/payments/pay", "application/json", data)
+		_, err = client.Post(paymentProviderURL, "application/json", data)
 
 		if err != nil {
 			fmt.Printf("Error %s", err)
@@ -63,8 +72,6 @@ func pay(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{})
 }
-
-var dbClient *db.Client
 
 type payRequest struct {
 	Id       string  `json:"id"`
