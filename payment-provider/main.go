@@ -19,6 +19,9 @@ func main() {
 
 func setupRouter() *gin.Engine {
 	r := gin.New()
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	r.POST("payments/pay", pay)
 	return r
 }

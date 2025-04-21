@@ -25,6 +25,7 @@ The following tools must be installed:
 - [make](https://www.gnu.org/software/make/)
 - [curl](https://curl.se/docs/install.html) or [wget](https://www.gnu.org/software/wget/)
 - \* [kubectl](https://kubernetes.io/docs/tasks/tools/) (optional; minikube provides its own version)
+- [jq](https://github.com/jqlang/jq)
 
 > \* If `kubectl` is not installed, minikube's bundled version may be used:
 >
@@ -156,3 +157,88 @@ The `payment-provider` Service is also defined as type `ClusterIP`, exposing the
 This ensures the service is not accessible externally and can only be reached by other internal services.
 
 The `invoice-app` communicates with `payment-provider` using the internal DNS name `http://payment-provider:8082`, which resolves to the corresponding ClusterIP service.
+
+### 2.2. Update deployments
+
+The `deployment.yaml` files for both `invoice-app` and `payment-provider` have been updated to follow Kubernetes best practices for production-grade workloads. The main improvements are:
+
+#### 2.2.1. Rollout strategy
+
+A `rollingUpdate` strategy is specified for both deployments, with:
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+```
+
+Rolling updates ensure zero downtime by incrementally replacing old pods with new ones:
+
+- `maxSurge: 1` allows one extra pod above the desired replica count during updates, ensuring capacity is maintained while new pods become ready.
+- `maxUnavailable: 0` guarantees that all existing pods remain available during the update, maximizing service availability and minimizing risk of outages.
+
+#### 2.2.2. Resource requests and limits
+
+Kubernetes uses resource requests and limits to manage CPU and memory allocation for containers:
+
+- **Requests** define the minimum amount of CPU or memory required for a container to be scheduled.
+- **Limits** define the maximum amount of CPU or memory a container is allowed to use.
+
+These values are specified per container, as shown below:
+
+```yaml
+resources:
+  requests:
+    cpu: "20m"
+    memory: "64Mi"
+  limits:
+    memory: "64Mi"
+```
+
+This configuration is based on actual resource consumption, gathered using `kubectl top pod` (requires the `metrics-server` addon):
+
+```sh
+kubectl top pod
+NAME                                CPU(cores)   MEMORY(bytes)
+invoice-app-56c99856b8-8tj6h        2m           6Mi
+invoice-app-56c99856b8-br87h        4m           9Mi
+invoice-app-56c99856b8-vh86k        4m           9Mi
+payment-provider-6586df4b97-4qqhf   3m           5Mi
+payment-provider-6586df4b97-87v2w   2m           5Mi
+payment-provider-6586df4b97-x6ztk   4m           6Mi
+```
+
+The resource requests and limits are set as follows:
+
+- **Requests** should be set slightly above the container's observed baseline usage to prevent throttling during normal operation.
+- **Memory limits** are set equal to requests to ensure predictable memory consumption and prevent out-of-memory (OOM) kills.
+- **CPU limits** are intentionally omitted to avoid throttling, which can negatively impact performance, particularly for latency-sensitive workloads.
+
+#### 2.2.3. Liveness and readiness probes
+
+To enhance deployment reliability, both deployments now include HTTP-based liveness and readiness probes targeting the `/healthz` endpoint:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: <port>
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 5
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: <port>
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 2
+```
+
+These probes help Kubernetes determine the health and readiness of the application containers:
+
+- **Liveness probes** detect and restart stuck containers that cannot recover on their own. They use a higher `failureThreshold` to tolerate transient issues before triggering a restart.
+- **Readiness probes** ensure that traffic is only routed to pods that are fully initialized and healthy. They typically fail faster to quickly remove unhealthy pods from service endpoints.
+- Both apps expose a `/healthz` endpoint for these probes, implemented as a simple GET route in `main.go`.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
 	"pleo.io/invoice-app/db"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,9 @@ func main() {
 
 func setupRouter() *gin.Engine {
 	r := gin.New()
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	r.POST("invoices/pay", pay)
 	r.GET("invoices", getInvoices)
 	return r

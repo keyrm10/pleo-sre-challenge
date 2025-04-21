@@ -5,7 +5,7 @@ set -euo pipefail
 MINIKUBE_VERSION="v1.35.0"
 DRIVER="docker"
 RUNTIME="containerd"
-ADDONS=("ingress" "ingress-dns")
+ADDONS=("ingress" "ingress-dns" "metrics-server")
 INSTALL_PATH="/usr/local/bin/minikube"
 
 # detect platform (linux|darwin) and architecture (amd64|arm64)
