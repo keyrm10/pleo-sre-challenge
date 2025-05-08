@@ -4,6 +4,11 @@ metadata:
   name: payment-provider
 spec:
   replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: payment-provider
@@ -13,8 +18,30 @@ spec:
         app: payment-provider
     spec:
       containers:
-      - name: main
-        image: payment-provider:latest
-        imagePullPolicy: IfNotPresent
+        - name: main
+          image: payment-provider:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          resources:
+            requests:
+              cpu: "20m"
+              memory: "64Mi"
+            limits:
+              memory: "64Mi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8082
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
       securityContext:
         runAsNonRoot: true
